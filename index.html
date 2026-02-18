@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GCP × GitHub Actions — Dauren</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gcp-blue: #4285F4;
+      --gcp-red: #EA4335;
+      --gcp-yellow: #FBBC05;
+      --gcp-green: #34A853;
+      --gh-dark: #0d1117;
+      --gh-gray: #161b22;
+      --gh-border: #30363d;
+      --text: #e6edf3;
+      --muted: #7d8590;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--gh-dark);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── GRID BACKGROUND ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(66,133,244,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(66,133,244,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── GLOWING BLOBS ── */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+      animation: drift 12s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 500px; height: 500px; background: var(--gcp-blue); top: -150px; left: -100px; animation-delay: 0s; }
+    .blob-2 { width: 400px; height: 400px; background: var(--gcp-green); bottom: -100px; right: -80px; animation-delay: -4s; }
+    .blob-3 { width: 300px; height: 300px; background: var(--gcp-yellow); top: 40%; left: 55%; animation-delay: -8s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(30px, 20px) scale(1.08); }
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 80px 24px 60px;
+    }
+
+    /* ── BADGE ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--gh-gray);
+      border: 1px solid var(--gh-border);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 40px;
+      opacity: 0;
+      animation: fadeUp .6s .1s forwards;
+    }
+    .badge .dot {
+      width: 7px; height: 7px;
+      background: var(--gcp-green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52,168,83,.5); }
+      50%       { opacity: .7; box-shadow: 0 0 0 5px rgba(52,168,83,0); }
+    }
+
+    /* ── HERO ── */
+    .hero { margin-bottom: 64px; }
+
+    .title {
+      font-size: clamp(42px, 8vw, 80px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -2px;
+      opacity: 0;
+      animation: fadeUp .7s .2s forwards;
+    }
+
+    .title .gcp   { color: var(--gcp-blue); }
+    .title .cross { color: var(--gh-border); margin: 0 8px; }
+    .title .gh    {
+      background: linear-gradient(135deg, #e6edf3 30%, #7d8590);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      margin-top: 20px;
+      font-size: 18px;
+      color: var(--muted);
+      font-weight: 400;
+      max-width: 560px;
+      line-height: 1.6;
+      opacity: 0;
+      animation: fadeUp .7s .35s forwards;
+    }
+    .subtitle strong { color: var(--text); }
+
+    /* ── AUTHOR CHIP ── */
+    .author {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 32px;
+      background: var(--gh-gray);
+      border: 1px solid var(--gh-border);
+      border-radius: 12px;
+      padding: 10px 20px;
+      opacity: 0;
+      animation: fadeUp .7s .5s forwards;
+    }
+    .author-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gcp-blue), var(--gcp-green));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: #fff;
+    }
+    .author-info { line-height: 1.3; }
+    .author-name { font-size: 15px; font-weight: 700; }
+    .author-handle { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+    /* ── PIPELINE CARD ── */
+    .pipeline-section {
+      opacity: 0;
+      animation: fadeUp .7s .65s forwards;
+    }
+
+    .section-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .pipeline {
+      background: var(--gh-gray);
+      border: 1px solid var(--gh-border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .pipeline-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--gh-border);
+      background: rgba(255,255,255,.02);
+    }
+    .pipeline-header .dot-red   { background: #ff5f57; }
+    .pipeline-header .dot-yel   { background: #febc2e; }
+    .pipeline-header .dot-grn   { background: #28c840; }
+    .pipeline-header span { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    .pipeline-header .fname {
+      margin-left: 8px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pipeline-body { padding: 24px 20px; }
+
+    .steps { display: flex; flex-direction: column; gap: 0; }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      position: relative;
+    }
+    .step:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 34px;
+      bottom: -8px;
+      width: 2px;
+      background: var(--gh-border);
+    }
+
+    .step-icon {
+      width: 32px; height: 32px; flex-shrink: 0;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .step-icon.done  { background: rgba(52,168,83,.2);  border: 2px solid var(--gcp-green); }
+    .step-icon.run   { background: rgba(66,133,244,.2); border: 2px solid var(--gcp-blue); animation: spinBorder 1.5s linear infinite; }
+    .step-icon.wait  { background: rgba(255,255,255,.04); border: 2px solid var(--gh-border); }
+
+    @keyframes spinBorder {
+      to { border-color: var(--gcp-blue) transparent transparent; }
+    }
+
+    .step-content { padding-bottom: 24px; }
+    .step-name { font-size: 15px; font-weight: 700; }
+    .step-desc { font-size: 13px; color: var(--muted); margin-top: 2px; font-family: 'Space Mono', monospace; }
+
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-family: 'Space Mono', monospace;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-top: 6px;
+    }
+    .tag-green  { background: rgba(52,168,83,.15);  color: var(--gcp-green);  border: 1px solid rgba(52,168,83,.3); }
+    .tag-blue   { background: rgba(66,133,244,.15); color: var(--gcp-blue);   border: 1px solid rgba(66,133,244,.3); }
+    .tag-yellow { background: rgba(251,188,5,.15);  color: var(--gcp-yellow); border: 1px solid rgba(251,188,5,.3); }
+
+    /* ── TECH GRID ── */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 12px;
+      margin-top: 32px;
+      opacity: 0;
+      animation: fadeUp .7s .8s forwards;
+    }
+
+    .tech-card {
+      background: var(--gh-gray);
+      border: 1px solid var(--gh-border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: border-color .2s, transform .2s;
+      cursor: default;
+    }
+    .tech-card:hover {
+      border-color: var(--gcp-blue);
+      transform: translateY(-3px);
+    }
+    .tech-card .icon { font-size: 24px; margin-bottom: 8px; }
+    .tech-card .name { font-size: 14px; font-weight: 700; }
+    .tech-card .desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── FOOTER ── */
+    .footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--gh-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      opacity: 0;
+      animation: fadeUp .7s 1s forwards;
+    }
+    .footer .gcp-colors span {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-left: 4px;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 600px) {
+      .footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <div class="wrapper">
+
+    <div class="badge">
+      <span class="dot"></span>
+      workflow running · main branch
+    </div>
+
+    <div class="hero">
+      <h1 class="title">
+        <span class="gcp">GCP</span><span class="cross">×</span><span class="gh">GitHub<br>Actions</span>
+      </h1>
+      <p class="subtitle">
+        Deploying to <strong>Google Cloud Platform</strong> using automated
+        CI/CD pipelines powered by <strong>GitHub Actions</strong>.
+      </p>
+
+      <div class="author">
+        <div class="author-avatar">D</div>
+        <div class="author-info">
+          <div class="author-name">Dauren</div>
+          <div class="author-handle">@dauren · practice project</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="pipeline-section">
+      <p class="section-label">// ci/cd pipeline</p>
+      <div class="pipeline">
+        <div class="pipeline-header">
+          <span class="dot-red"></span>
+          <span class="dot-yel"></span>
+          <span class="dot-grn"></span>
+          <span class="fname">.github/workflows/deploy.yml</span>
+        </div>
+        <div class="pipeline-body">
+          <div class="steps">
+
+            <div class="step">
+              <div class="step-icon done">✓</div>
+              <div class="step-content">
+                <div class="step-name">Checkout & Setup</div>
+                <div class="step-desc">actions/checkout@v4 · node 20.x</div>
+                <span class="tag tag-green">completed · 4s</span>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-icon done">✓</div>
+              <div class="step-content">
+                <div class="step-name">Authenticate to GCP</div>
+                <div class="step-desc">google-github-actions/auth · Workload Identity</div>
+                <span class="tag tag-green">completed · 2s</span>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-icon run">⟳</div>
+              <div class="step-content">
+                <div class="step-name">Build & Push to Artifact Registry</div>
+                <div class="step-desc">docker build · gcr.io/project/app:sha</div>
+                <span class="tag tag-blue">in progress · 38s</span>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-icon wait">○</div>
+              <div class="step-content">
+                <div class="step-name">Deploy to Cloud Run</div>
+                <div class="step-desc">gcloud run deploy · us-central1</div>
+                <span class="tag tag-yellow">queued</span>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-icon wait">○</div>
+              <div class="step-content">
+                <div class="step-name">Verify & Health Check</div>
+                <div class="step-desc">curl · https://app-xxxx.run.app/health</div>
+                <span class="tag tag-yellow">queued</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="tech-grid">
+      <div class="tech-card">
+        <div class="icon">☁️</div>
+        <div class="name">Cloud Run</div>
+        <div class="desc">Serverless containers</div>
+      </div>
+      <div class="tech-card">
+        <div class="icon">📦</div>
+        <div class="name">Artifact Registry</div>
+        <div class="desc">Docker image store</div>
+      </div>
+      <div class="tech-card">
+        <div class="icon">🔐</div>
+        <div class="name">Workload Identity</div>
+        <div class="desc">Keyless auth</div>
+      </div>
+      <div class="tech-card">
+        <div class="icon">⚙️</div>
+        <div class="name">GitHub Actions</div>
+        <div class="desc">CI/CD automation</div>
+      </div>
+      <div class="tech-card">
+        <div class="icon">🐳</div>
+        <div class="name">Docker</div>
+        <div class="desc">Containerization</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>practice project by Dauren · 2026</span>
+      <span class="gcp-colors">
+        GCP
+        <span style="background:var(--gcp-blue)"></span>
+        <span style="background:var(--gcp-red)"></span>
+        <span style="background:var(--gcp-yellow)"></span>
+        <span style="background:var(--gcp-green)"></span>
+      </span>
+    </div>
+
+  </div>
+</body>
+</html>
