@@ -1,2 +1,2 @@
 # gcp-github-actions-practice
-HTML website for GCP practice workshop
+Simple HTML website project for GCP practice workshop
